@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Звёздная пыль</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-deep:#0B1026;
+    --bg-panel:#121933;
+    --bg-row:#161f42;
+    --violet:#7C5CFC;
+    --teal:#34D1BD;
+    --gold:#F2C94C;
+    --text:#F5F5F7;
+    --muted:#8B93A7;
+    --line:#232C52;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:
+      radial-gradient(ellipse at 50% -10%, #1c2557 0%, var(--bg-deep) 55%);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    overscroll-behavior:none;
+    user-select:none;
+  }
+  #stars{position:fixed; inset:0; z-index:0; pointer-events:none;}
+  .wrap{
+    position:relative; z-index:1;
+    max-width:480px; margin:0 auto;
+    min-height:100vh;
+    display:flex; flex-direction:column;
+    padding:18px 18px 32px;
+  }
+  header{
+    display:flex; justify-content:space-between; align-items:baseline;
+    padding-bottom:6px;
+  }
+  header .brand{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600; font-size:15px; letter-spacing:0.02em;
+    color:var(--muted);
+  }
+  header .rate{
+    font-size:13px; color:var(--teal); font-weight:500;
+  }
+  .counter{
+    text-align:center; margin-top:8px;
+  }
+  .counter .num{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700; font-size:56px; line-height:1;
+    color:var(--gold);
+    text-shadow:0 0 30px rgba(242,201,76,0.35);
+    font-variant-numeric:tabular-nums;
+  }
+  .counter .label{
+    margin-top:4px; font-size:13px; color:var(--muted);
+  }
+  .stage{
+    flex:1; display:flex; align-items:center; justify-content:center;
+    position:relative; min-height:240px; margin:6px 0 10px;
+  }
+  #starBtn{
+    width:180px; height:180px; border-radius:50%;
+    border:none; cursor:pointer;
+    background:
+      radial-gradient(circle at 35% 30%, #ffffff 0%, #cdb8ff 8%, var(--violet) 42%, #3d2a8f 100%);
+    box-shadow:0 0 60px rgba(124,92,252,0.55), inset 0 0 30px rgba(255,255,255,0.25);
+    transition:transform 0.08s ease;
+    position:relative;
+  }
+  #starBtn:active{transform:scale(0.93);}
+  .pulse{
+    position:absolute; inset:0; border-radius:50%;
+    border:1px solid rgba(124,92,252,0.5);
+    animation:pulse 2.6s ease-out infinite;
+    pointer-events:none;
+  }
+  @keyframes pulse{
+    0%{transform:scale(1); opacity:0.7;}
+    100%{transform:scale(1.6); opacity:0;}
+  }
+  .float{
+    position:absolute; left:50%; top:30%;
+    font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:18px;
+    color:var(--gold); pointer-events:none;
+    animation:floatUp 0.9s ease-out forwards;
+  }
+  @keyframes floatUp{
+    0%{opacity:1; transform:translate(-50%,0);}
+    100%{opacity:0; transform:translate(-50%,-70px);}
+  }
+  section.upgrades{margin-top:4px;}
+  .upgrades h2{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:13px; font-weight:600; color:var(--muted);
+    margin:0 0 10px 2px; letter-spacing:0.01em;
+  }
+  .row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:13px 4px; border-top:1px solid var(--line);
+    cursor:pointer;
+  }
+  .row:last-child{border-bottom:1px solid var(--line);}
+  .row.disabled{opacity:0.4; cursor:default;}
+  .row .info{display:flex; flex-direction:column; gap:2px;}
+  .row .name{font-size:14.5px; font-weight:500;}
+  .row .effect{font-size:12px; color:var(--muted);}
+  .row .right{display:flex; flex-direction:column; align-items:flex-end; gap:2px;}
+  .row .cost{font-family:'Space Grotesk',sans-serif; font-size:14.5px; font-weight:600; color:var(--gold);}
+  .row .lvl{font-size:11px; color:var(--muted);}
+  footer{
+    text-align:center; margin-top:22px; font-size:11px; color:var(--muted);
+  }
+</style>
+</head>
+<body>
+<canvas id="stars"></canvas>
+<div class="wrap">
+  <header>
+    <span class="brand">ЗВЁЗДНАЯ ПЫЛЬ</span>
+    <span class="rate" id="rate">+0/сек</span>
+  </header>
+
+  <div class="counter">
+    <div class="num" id="count">0</div>
+    <div class="label">частиц пыли</div>
+  </div>
+
+  <div class="stage">
+    <div class="pulse"></div>
+    <div class="pulse" style="animation-delay:1.3s"></div>
+    <button id="starBtn" aria-label="Собрать пыль"></button>
+  </div>
+
+  <section class="upgrades">
+    <h2>Апгрейды</h2>
+    <div id="upgradeList"></div>
+  </section>
+
+  <footer>Прогресс сохраняется автоматически</footer>
+</div>
+
+<script>
+(function(){
+  // --- Telegram WebApp init ---
+  var tg = window.Telegram ? window.Telegram.WebApp : null;
+  if(tg){ tg.ready(); tg.expand(); }
+
+  // --- starfield background ---
+  var canvas = document.getElementById('stars');
+  var ctx = canvas.getContext('2d');
+  function resize(){ canvas.width = innerWidth; canvas.height = innerHeight; }
+  resize(); addEventListener('resize', resize);
+  var pts = Array.from({length:90}, function(){
+    return {x:Math.random()*canvas.width, y:Math.random()*canvas.height, r:Math.random()*1.4+0.3, a:Math.random()};
+  });
+  function drawStars(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    pts.forEach(function(p){
+      p.a += (Math.random()-0.5)*0.02;
+      p.a = Math.max(0.1, Math.min(1, p.a));
+      ctx.fillStyle = 'rgba(245,245,247,'+p.a.toFixed(2)+')';
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.fill();
+    });
+    requestAnimationFrame(drawStars);
+  }
+  drawStars();
+
+  // --- game state ---
+  var SAVE_KEY = 'stardust_save_v1';
+  var state = {dust:0, perTap:1, perSecond:0, levels:{a:0,b:0,c:0,d:0}};
+  try{
+    var saved = localStorage.getItem(SAVE_KEY);
+    if(saved) state = Object.assign(state, JSON.parse(saved));
+  }catch(e){}
+
+  var UPGRADES = [
+    {id:'a', name:'Крепкие пальцы', effect:'+1 к сбору за тап', base:15,  scale:1.15, apply:function(){ state.perTap += 1; }},
+    {id:'b', name:'Пылесборник',    effect:'+0.5 пыли в секунду', base:50, scale:1.15, apply:function(){ state.perSecond += 0.5; }},
+    {id:'c', name:'Спутник-сборщик',effect:'+3 пыли в секунду', base:300, scale:1.15, apply:function(){ state.perSecond += 3; }},
+    {id:'d', name:'Гравитационная линза', effect:'x2 к сбору за тап', base:800, scale:1.6, apply:function(){ state.perTap *= 2; }}
+  ];
+
+  function costOf(u){
+    var lvl = state.levels[u.id] || 0;
+    return Math.ceil(u.base * Math.pow(u.scale, lvl));
+  }
+
+  var countEl = document.getElementById('count');
+  var rateEl = document.getElementById('rate');
+  var listEl = document.getElementById('upgradeList');
+
+  function fmt(n){
+    n = Math.floor(n);
+    if(n < 1000) return String(n);
+    if(n < 1000000) return (n/1000).toFixed(n%1000===0?0:1)+'K';
+    return (n/1000000).toFixed(2)+'M';
+  }
+
+  function render(){
+    countEl.textContent = fmt(state.dust);
+    rateEl.textContent = '+'+ (Math.round(state.perSecond*10)/10) +'/сек';
+    listEl.innerHTML = '';
+    UPGRADES.forEach(function(u){
+      var cost = costOf(u);
+      var lvl = state.levels[u.id] || 0;
+      var row = document.createElement('div');
+      row.className = 'row' + (state.dust < cost ? ' disabled' : '');
+      row.innerHTML =
+        '<div class="info">'+
+          '<div class="name">'+u.name+'</div>'+
+          '<div class="effect">'+u.effect+'</div>'+
+        '</div>'+
+        '<div class="right">'+
+          '<div class="cost">'+fmt(cost)+'</div>'+
+          '<div class="lvl">ур. '+lvl+'</div>'+
+        '</div>';
+      row.addEventListener('click', function(){ buy(u); });
+      listEl.appendChild(row);
+    });
+  }
+
+  function buy(u){
+    var cost = costOf(u);
+    if(state.dust < cost) return;
+    state.dust -= cost;
+    state.levels[u.id] = (state.levels[u.id]||0) + 1;
+    u.apply();
+    save();
+    render();
+    if(tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+  }
+
+  function save(){
+    try{ localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }catch(e){}
+  }
+
+  var starBtn = document.getElementById('starBtn');
+  starBtn.addEventListener('click', function(e){
+    state.dust += state.perTap;
+    render();
+    save();
+    if(tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+
+    var f = document.createElement('div');
+    f.className = 'float';
+    f.textContent = '+' + fmt(state.perTap);
+    f.style.left = (48 + (Math.random()*30-15)) + '%';
+    starBtn.parentElement.appendChild(f);
+    setTimeout(function(){ f.remove(); }, 900);
+  });
+
+  setInterval(function(){
+    if(state.perSecond > 0){
+      state.dust += state.perSecond/10;
+      render();
+    }
+  }, 100);
+  setInterval(save, 4000);
+
+  render();
+})();
+</script>
+</body>
+</html>
